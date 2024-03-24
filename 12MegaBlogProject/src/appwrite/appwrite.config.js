@@ -1,6 +1,10 @@
 // Appwrite configuration
+import { useSelector } from "react-redux";
 import urlConfig from "../config/url.config";
 import { Client, ID, Databases, Storage, Query } from "appwrite";
+
+// const authSlice = useSelector((state) => state.auth.userData);
+// console.log('authSlice: (in appwrite.config.js): ', authSlice)
 
 export class Service {
     client = new Client();
@@ -17,6 +21,7 @@ export class Service {
 
     async createPost({title, slug, content, featuredImage, status, userId}) {
         try {
+            console.log('userId: ', userId);
             const createdPost = await this.databases.createDocument(
                 urlConfig.appwriteDatabaseId,
                 urlConfig.appwriteCollectionId,
@@ -29,16 +34,17 @@ export class Service {
                     userId
                 }
             )
-            console.log('Post created: ', createdPost);
+            console.log('Post created ! ✅');
             return createdPost;
         } catch (error) {
             console.log('Appwrite service :: createPost :: error: ', error);
+            throw error;
         }
     }
 
     async updatePost(slug, {title, content, featuredImage, status}) {
         try {
-            await this.databases.updateDocument(
+            const updatedPost = await this.databases.updateDocument(
                 urlConfig.appwriteDatabaseId,
                 urlConfig.appwriteCollectionId,
                 slug,
@@ -49,7 +55,8 @@ export class Service {
                     status
                 }
             )
-            console.log('Post updated: ', slug);
+            console.log('Post updated: (in appwrite.config.js)');
+            return updatedPost;
         } catch (error) {
             console.log('Appwrite service :: updatePost :: error: ', error);
         }
@@ -57,11 +64,15 @@ export class Service {
 
     async deletePost(slug) {
         try {
-            await this.databases.deleteDocument(slug)
+            await this.databases.deleteDocument(
+                urlConfig.appwriteDatabaseId,
+                urlConfig.appwriteCollectionId,
+                slug
+            )
             console.log('Post deleted: ', slug);
             return true;
         } catch (error) {
-            console.log('Appwrite service :: delatePost :: error: ', error);
+            console.log('Appwrite service :: deletePost :: error: ', error);
             return false;
         }
     }
@@ -73,24 +84,30 @@ export class Service {
                 urlConfig.appwriteCollectionId,
                 slug
             )
-            console.log('Post fetched: ', fetchOnePost);
+            // console.log('Post fetched: ', fetchOnePost);
             return fetchOnePost;
         } catch (error) {
             console.log('Appwrite service :: getDocument :: error: ', error);
-            return false;
+            throw error;
         }
     }
 
-    async getPosts(queries = [Query.equal("status", "active")]) {
+    async getPosts(queries = [Query.equal('status', ['active'])]) {
         try {
-            await this.databases.listDocuments(
+            // console.log('props: ', props[0]);
+            const fetchPosts = await this.databases.listDocuments(
                 urlConfig.appwriteDatabaseId,
                 urlConfig.appwriteCollectionId,
-                queries
+                queries,
+                // TODO: Check for queries based on userId, where post shown by user who has created it
+            // [Query.equal("status", "active")]
             )
+            // console.log('Posts fetched (in getPosts): ', fetchPosts);
+            return fetchPosts;
         } catch (error) {
             console.log('Appwrite service :: getPosts :: error: ', error);
-            return false;
+            throw error;
+            // return false;
         }
     }
 
@@ -107,17 +124,18 @@ export class Service {
             return fileUploadResponse;
         } catch (error) {
             console.log('Appwrite service :: uploadFile :: error: ', error);
-            return false;
+            return error;
         }
     }
 
     async deleteFile(fileId) {
         try {
-            console.log('File deleted: ', fileId);
-            return await this.bucket.deleteFile(
+            await this.bucket.deleteFile(
                 urlConfig.appwriteBucketId,
                 fileId
             );
+            console.log('File deleted: ', fileId);
+            return true;
         } catch (error) {
             console.log('Appwrite service :: deleteFile :: error: ', error);
             return false;
